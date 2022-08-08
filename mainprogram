@@ -3,13 +3,17 @@ from signal import pause
 from picamera import PiCamera
 from time import sleep
 from smbus2 import SMBus
-
-
+#sudo pip3 install smbus2
 import RPi.GPIO as GPIO
+import os
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 GPIO.setup(14, GPIO.OUT)
 GPIO.output(14, GPIO.LOW)
+GPIO.setup(27, GPIO.OUT)
+GPIO.output(27, GPIO.HIGH)
+GPIO.setup(15, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
 
 
 camResW = 720
@@ -19,7 +23,7 @@ camFramR = 30
 
 cornerX = 000
 cornerY = 000
-windowSpacer = 0 # space between the 2 windows
+windowSpacer = 0
 
 camera = mo.MMALCamera()
 splitter = mo.MMALSplitter()
@@ -28,17 +32,14 @@ render_r = mo.MMALRenderer()
 
 
 camera.outputs[0].framesize = (camResW,camResH)
-
 camera.outputs[0].framerate = camFramR
 camera.outputs[0].commit()
 
 p = render_l.inputs[0].params[mmal.MMAL_PARAMETER_DISPLAYREGION]
 p.set = mmal.MMAL_DISPLAY_SET_FULLSCREEN | mmal.MMAL_DISPLAY_SET_DEST_RECT
 p.fullscreen = False
-
 p.dest_rect = mmal.MMAL_RECT_T(cornerX, cornerY, camResW, camResH)
 render_l.inputs[0].params[mmal.MMAL_PARAMETER_DISPLAYREGION] = p
-
 p.dest_rect = mmal.MMAL_RECT_T(cornerX, 640, camResW, camResH)
 render_r.inputs[0].params[mmal.MMAL_PARAMETER_DISPLAYREGION] = p
 
@@ -50,17 +51,47 @@ render_r.connect(splitter.outputs[1])
 splitter.enable()
 render_l.enable()
 render_r.enable()
+
+b=100
 while True:
-    with SMBus(1) as bus:
-        b=bus.read_byte_data(0x0b,0x0e)
-        print(b)
-        if b < 10:
+    but = GPIO.input(15)
+    sleep(0.2)
+    with SMBus(4) as bus:
+        try:
+            b=bus.read_byte_data(0xb,0x0e,0x0e)
+            sleep(0.2)
+            print(b)
+        except:
+            
+            print(b)
+        if b < 8:
             print("Bateria")
             GPIO.output(14, GPIO.HIGH)
-            sleep(1)
-            GPIO.output(14, GPIO.LOW)
-    sleep(5)
+            if but == True:
+                GPIO.output(27, GPIO.LOW)
+                sleep(0.3)
+                GPIO.output(27, GPIO.HIGH)
+                GPIO.output(14, GPIO.LOW)
+            else:
+                sleep(0.3)
+                GPIO.output(14, GPIO.LOW)
+        else:
+            if but == True:
+                GPIO.output(27, GPIO.LOW)
+                sleep(0.3)
+                GPIO.output(27, GPIO.HIGH)
+                GPIO.output(14, GPIO.LOW)
+            else:
+                sleep(0.3)
+                GPIO.output(14, GPIO.LOW)
+                
+
+            
+    
 pause()
+
+
+
 
 
 
